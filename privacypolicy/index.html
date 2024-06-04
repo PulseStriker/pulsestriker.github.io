@@ -5,12 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Privacy Policy</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
+        body, html {
             margin: 0;
             padding: 0;
-            background-color: #f4f4f4;
-            color: #333;
+            height: 100%;
+        }
+        .content {
+            min-height: 100%;
+            position: relative;
+            padding-bottom: 2.5rem; /* Footer height */
+            box-sizing: border-box;
         }
         header {
             background-color: #007acc;
@@ -29,12 +33,13 @@
             color: #007acc;
         }
         footer {
-            text-align: center;
-            padding: 1rem 0;
             background-color: #007acc;
             color: white;
-            position: absolute;
+            text-align: center;
+            padding: 1rem 0;
+            height: 2.5rem; /* Footer height */
             width: 100%;
+            position: absolute;
             bottom: 0;
         }
     </style>
