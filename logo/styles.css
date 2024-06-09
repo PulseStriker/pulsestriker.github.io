@@ -1,7 +1,6 @@
-html {
-    background: black;
-    height: 100%;
-    overflow: hidden;
+* {
+    padding: 0;
+    margin: 0;
 }
 
 body {
@@ -9,7 +8,15 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0;
-    padding: 0;
     height: 100vh;
+}
+h1 {
+    font-family: Monospace;
+    color: green;
+    text-shadow: 0 0 5px green;
+}
+h2 {
+    font-family: Monospace;
+    color: blue;
+    text-shadow: 0 0 3px blue;
 }
