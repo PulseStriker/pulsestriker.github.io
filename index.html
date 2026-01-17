@@ -9,7 +9,9 @@
     <!-- Leaflet MarkerCluster CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-    
+    <!-- Google AdSense Script (your snippet for auto-ads) -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1638856822994397"
+            crossorigin="anonymous"></script>
     <style>
         /* Full-window map with better theming */
         html, body {
@@ -160,17 +162,17 @@
             background: #2980b9;
         }
     </style>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1638856822994397"
-     crossorigin="anonymous"></script>
 </head>
 <body>
     <div id="map"></div>
     <div id="loading"><div class="spinner"></div></div>
     <!-- Search Container -->
     <div id="search-container">
-        <input type="text" id="search-input" placeholder="Enter Benchmark ID (e.g., 1-1)">
+        <input type="text" id="search-input" list="benchmark-ids" placeholder="Enter Benchmark ID (e.g., 1-1)"> <!-- New: list attribute for autocomplete -->
         <button id="search-btn">Search</button>
     </div>
+    <!-- New: Datalist for autocomplete (populated dynamically) -->
+    <datalist id="benchmark-ids"></datalist>
     <!-- Contact Button -->
     <button id="contact-btn" title="Contact Us">?</button>
     <!-- Contact Modal -->
@@ -261,7 +263,14 @@
                 const response = await fetch('benchmarks.json');
                 benchmarksData = await response.json(); // Store data globally
 
+                // New: Populate datalist for autocomplete
+                const datalist = document.getElementById('benchmark-ids');
                 benchmarksData.forEach(benchmark => {
+                    const option = document.createElement('option');
+                    option.value = benchmark.id;
+                    datalist.appendChild(option);
+
+                    // Existing marker creation...
                     const pos = [benchmark.lat, benchmark.lng];
                     const elev = benchmark.elev || ''; // Handle missing elev
                     const isBlankElev = !elev.trim(); // Check if blank/empty
