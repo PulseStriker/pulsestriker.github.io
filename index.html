@@ -72,8 +72,8 @@
         #contact-btn:hover {
             background-color: #2980b9;
         }
-        /* Modal Styles */
-        #contact-modal {
+        /* Modal Styles (for contact and report) */
+        .modal {
             display: none;
             position: fixed;
             z-index: 1002;
@@ -129,7 +129,7 @@
         button[type="submit"]:hover {
             background-color: #219a52;
         }
-        #form-feedback {
+        #form-feedback, #report-feedback {
             margin-top: 10px;
             font-size: 14px;
         }
@@ -229,12 +229,78 @@
         .donate-link:hover {
             background-color: #2980b9;
         }
-        /* New: Fix for long text overflow (e.g., BTC address) */
+        /* Fix for long text overflow (e.g., BTC address) */
         .btc-address {
             word-break: break-all; /* Wrap long strings */
             font-family: monospace; /* Better readability for addresses */
             display: block;
             margin-top: 5px;
+        }
+        /* Bottom Slide-Up Panel */
+        #benchmark-panel {
+            position: fixed;
+            bottom: -300px; /* Hidden below screen */
+            left: 0;
+            width: 100%;
+            background-color: white;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+            transition: bottom 0.3s ease-in-out;
+            z-index: 1001;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            max-height: 300px; /* Initial height; expandable later */
+        }
+        #benchmark-panel.visible {
+            bottom: 0; /* Slide up */
+        }
+        #panel-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        /* Report Button in Panel */
+        #panel-report {
+            position: absolute;
+            top: 10px;
+            right: 40px; /* Next to close */
+            background: none;
+            border: none;
+            font-size: 16px;
+            color: #e74c3c; /* Red for report */
+            cursor: pointer;
+        }
+        #panel-report:hover {
+            color: #c0392b;
+        }
+        #panel-content {
+            margin-top: 20px;
+        }
+        /* Disclaimer Footer */
+        footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent over map */
+            text-align: center;
+            padding: 5px 0;
+            font-size: 12px;
+            color: #666;
+            z-index: 1000; /* Above map but below controls/buttons */
+        }
+        /* New: Custom style for benchmark labels (optional tweaks) */
+        .benchmark-label {
+            background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent bg */
+            border: 1px solid #ccc;
+            padding: 2px 5px;
+            font-size: 12px;
+            border-radius: 3px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
     </style>
 </head>
@@ -267,7 +333,7 @@
     <!-- Contact Button -->
     <button id="contact-btn" title="Contact Us">?</button>
     <!-- Contact Modal -->
-    <div id="contact-modal">
+    <div id="contact-modal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
             <h2>Contact Us</h2>
@@ -281,6 +347,31 @@
             <div id="form-feedback"></div>
         </div>
     </div>
+    <!-- Report Modal -->
+    <div id="report-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Report Benchmark Issue</h2>
+            <p>Describe the issue with this benchmark (e.g., wrong location, elevation error).</p>
+            <form id="report-form">
+                <input type="text" id="report-name" placeholder="Your Name (optional)">
+                <input type="email" id="report-email" placeholder="Your Email (optional)">
+                <textarea id="report-message" placeholder="Describe the issue..." rows="5" required></textarea>
+                <button type="submit">Send Report</button>
+            </form>
+            <div id="report-feedback"></div>
+        </div>
+    </div>
+    <!-- Bottom Slide-Up Panel -->
+    <div id="benchmark-panel">
+        <button id="panel-close">×</button>
+        <button id="panel-report">Report</button> <!-- Report button -->
+        <div id="panel-content"></div>
+    </div>
+    <!-- Disclaimer Footer -->
+    <footer>
+        Note: Benchmark locations are approximate. There is no guarantee of accuracy—use at your own risk and double-check data.
+    </footer>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -294,10 +385,11 @@
         let userMarker;
         let baseLayers; // For switchable tiles
         let loadingTimeout; // For fallback hide
-        let elevCluster; // New: Cluster for benchmarks with elevation (red, default on)
-        let noElevCluster; // New: Cluster for no-elevation (black, default off)
+        let elevCluster; // Cluster for benchmarks with elevation (red, default on)
+        let noElevCluster; // Cluster for no-elevation (black, default off)
         let benchmarksData = []; // Store benchmarks for searching
         let benchmarkMarkers = new Map(); // Map ID to marker for quick access
+        let currentBenchmark = null; // To store clicked benchmark data
 
         // Initialize the map
         function initMap() {
@@ -308,11 +400,16 @@
                 attributionControl: true
             }).setView(defaultCenter, 11); // Default zoom 11
 
-            // Define switchable base layers
+            // Define switchable base layers (with Grayscale)
             baseLayers = {
                 'Street Map': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
                     maxZoom: 19
+                }),
+                'Grayscale': L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/toner/{z}/{x}/{y}{r}.png', {
+                    attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    maxZoom: 20,
+                    subdomains: 'abcd'
                 }),
                 'Satellite': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                     attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
@@ -331,7 +428,7 @@
             // Add scale control
             L.control.scale({ imperial: false }).addTo(map); // Metric scale
 
-            // New: Separate cluster groups
+            // Separate cluster groups
             elevCluster = L.markerClusterGroup();
             noElevCluster = L.markerClusterGroup();
             map.addLayer(elevCluster); // Elev on by default
@@ -351,6 +448,12 @@
 
             // Setup search functionality
             setupSearch();
+
+            // Setup panel close button
+            document.getElementById('panel-close').addEventListener('click', hidePanel);
+
+            // Setup report button in panel
+            document.getElementById('panel-report').addEventListener('click', showReportModal);
         }
 
         // Function to load benchmarks from JSON file
@@ -383,17 +486,22 @@
                         weight: 1 // Thin border
                     });
 
-                    // Bind popup with id, elevation, description
-                    marker.bindPopup(`
-                        <b>ID:</b> ${benchmark.id}<br>
-                        <b>Elevation:</b> ${elev || 'N/A'}<br>
-                        <b>Description:</b> ${benchmark.desc || 'No description'}
-                    `);
+                    // Bind click event to show panel instead of popup
+                    marker.on('click', () => showBenchmarkPanel(benchmark));
+
+                    // New: Bind permanent tooltip as label (ID beside dot)
+                    marker.bindTooltip(benchmark.id, {
+                        permanent: true, // Always show
+                        direction: 'right', // Beside to the right
+                        offset: L.point(15, 0), // Offset from dot
+                        className: 'benchmark-label', // Custom class for styling if needed
+                        opacity: 0.9
+                    });
 
                     // Store marker by ID for quick access
                     benchmarkMarkers.set(benchmark.id.toLowerCase(), marker);
 
-                    // New: Add to appropriate cluster
+                    // Add to appropriate cluster
                     if (isBlankElev) {
                         noElevCluster.addLayer(marker);
                     } else {
@@ -404,6 +512,36 @@
                 console.error('Error loading benchmarks:', error);
                 alert('Failed to load benchmarks data. Check console for details.');
             }
+        }
+
+        // Show bottom panel with benchmark info
+        function showBenchmarkPanel(benchmark) {
+            const panelContent = document.getElementById('panel-content');
+            panelContent.innerHTML = `
+                <b>ID:</b> ${benchmark.id}<br>
+                <b>Elevation:</b> ${benchmark.elev || 'N/A'}<br>
+                <b>Description:</b> ${benchmark.desc || 'No description'}
+            `;
+            document.getElementById('benchmark-panel').classList.add('visible');
+            currentBenchmark = benchmark; // Store for report
+        }
+
+        // Hide bottom panel
+        function hidePanel() {
+            document.getElementById('benchmark-panel').classList.remove('visible');
+        }
+
+        // Show report modal with prefilled subject
+        function showReportModal() {
+            if (!currentBenchmark) return;
+            const reportModal = document.getElementById('report-modal');
+            reportModal.style.display = 'flex';
+            // Prefill subject in email (handled in submit)
+        }
+
+        // Hide report modal
+        function hideReportModal() {
+            document.getElementById('report-modal').style.display = 'none';
         }
 
         // Setup search input and button
@@ -433,8 +571,8 @@
                 // Zoom and pan to the location with animation
                 map.flyTo(marker.getLatLng(), 15, { duration: 1.0 });
 
-                // Open the popup
-                marker.openPopup();
+                // Simulate click to show panel
+                marker.fire('click');
             } else {
                 alert('Benchmark ID not found. Try another ID.');
             }
@@ -521,6 +659,40 @@
                 console.error('EmailJS error:', error);
                 feedback.textContent = 'Failed to send. Try again later.';
                 feedback.style.color = 'red';
+            });
+        };
+
+        // Report Modal Logic (similar to contact)
+        const reportModal = document.getElementById('report-modal');
+        const reportCloseBtn = reportModal.querySelector('.close');
+        const reportForm = document.getElementById('report-form');
+        const reportFeedback = document.getElementById('report-feedback');
+
+        reportCloseBtn.onclick = hideReportModal;
+        window.addEventListener('click', (event) => {
+            if (event.target === reportModal) hideReportModal();
+        });
+
+        reportForm.onsubmit = (e) => {
+            e.preventDefault();
+            reportFeedback.textContent = 'Sending...';
+            reportFeedback.style.color = 'blue';
+
+            emailjs.send('service_g8bddtz', 'template_qdkr30n', {
+                from_name: document.getElementById('report-name').value || 'Anonymous',
+                from_email: document.getElementById('report-email').value || 'no-reply@example.com',
+                message: document.getElementById('report-message').value,
+                subject: `Report for Benchmark ID: ${currentBenchmark.id}` // Prefilled subject
+            })
+            .then(() => {
+                reportFeedback.textContent = 'Report sent successfully!';
+                reportFeedback.style.color = 'green';
+                reportForm.reset();
+                setTimeout(hideReportModal, 2000);
+            }, (error) => {
+                console.error('EmailJS error:', error);
+                reportFeedback.textContent = 'Failed to send. Try again later.';
+                reportFeedback.style.color = 'red';
             });
         };
 
