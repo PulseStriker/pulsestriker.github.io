@@ -293,7 +293,7 @@
             color: #666;
             z-index: 1000; /* Above map but below controls/buttons */
         }
-        /* New: Custom style for benchmark labels (optional tweaks) */
+        /* Custom style for benchmark labels (optional tweaks) */
         .benchmark-label {
             background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent bg */
             border: 1px solid #ccc;
@@ -322,7 +322,7 @@
             <h2>Support the Project</h2>
             <p>If this benchmarks map helps your work, consider a donation! Thanks for supporting geodetic tools for surveyors.</p>
             <div class="donate-option">
-                <strong>eTransfer:</strong> Send to pulsestriker@wealthsimple.me (Interac; include 'Benchmarks Donation' in memo for reference)
+                <a href="https://www.buymeacoffee.com/Pulsestriker"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a hot chocolate&emoji=☕&slug=Pulsestriker&button_colour=40DCA5&font_colour=ffffff&font_family=Comic&outline_colour=000000&coffee_colour=FFDD00" /></a>
             </div>
             <div class="donate-option">
                 <strong>Bitcoin:</strong> <span class="btc-address">3NHguEkzt1WSUV36LgTbVPwyYDEQbbHdax</span>
@@ -632,13 +632,15 @@
         // Contact Modal Logic
         const modal = document.getElementById('contact-modal');
         const btn = document.getElementById('contact-btn');
-        const closeBtn = document.getElementsByClassName('close')[0];
+        const closeBtn = modal.querySelector('.close');
         const form = document.getElementById('contact-form');
         const feedback = document.getElementById('form-feedback');
 
         btn.onclick = () => { modal.style.display = 'flex'; };
         closeBtn.onclick = () => { modal.style.display = 'none'; };
-        window.onclick = (event) => { if (event.target === modal) { modal.style.display = 'none'; } };
+        window.addEventListener('click', (event) => {
+            if (event.target === modal) { modal.style.display = 'none'; }
+        });
 
         form.onsubmit = (e) => {
             e.preventDefault();
@@ -706,12 +708,9 @@
             generateBtcQr(); // Generate QR on open
         };
         donateCloseBtn.onclick = () => { donateModal.style.display = 'none'; };
-        window.onclick = (event) => { 
-            if (event.target === donateModal || event.target === modal) { 
-                donateModal.style.display = 'none'; 
-                modal.style.display = 'none'; 
-            } 
-        };
+        window.addEventListener('click', (event) => {
+            if (event.target === donateModal) { donateModal.style.display = 'none'; }
+        });
 
         // Generate Bitcoin QR (optional; remove if using static image)
         function generateBtcQr() {
