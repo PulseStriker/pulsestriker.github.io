@@ -2,733 +2,1325 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Interactive map of geodetic benchmarks. Search by ID or address, view elevations and descriptions.">
+    <meta name="theme-color" content="#1a1a2e">
     <title>Geodetic Benchmarks Map</title>
-    <!-- Leaflet CSS -->
+
+    <!-- Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Leaflet MarkerCluster CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-    <!-- Google AdSense Script (your snippet for auto-ads) -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1638856822994397"
-            crossorigin="anonymous"></script>
-    <!-- QR Code lib for Bitcoin (optional; CDN) -->
+
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1638856822994397" crossorigin="anonymous"></script>
+
+    <!-- QR Code -->
     <script src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
+
     <style>
-        /* Full-window map with better theming */
+        :root {
+            --bg: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --text: #1a1a2e;
+            --text-muted: #555;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --danger: #dc2626;
+            --success: #16a34a;
+            --warning: #d97706;
+            --border: #e5e7eb;
+            --shadow: 0 4px 20px rgba(0,0,0,0.12);
+            --panel-bg: #ffffff;
+            --overlay: rgba(0,0,0,0.45);
+            --marker-elev: #ef4444;
+            --marker-noelev: #1f2937;
+            --radius: 12px;
+            --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        [data-theme="dark"] {
+            --bg: #0f172a;
+            --bg-secondary: #1e293b;
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --accent-hover: #60a5fa;
+            --danger: #f87171;
+            --success: #4ade80;
+            --warning: #fbbf24;
+            --border: #334155;
+            --shadow: 0 4px 24px rgba(0,0,0,0.4);
+            --panel-bg: #1e293b;
+            --overlay: rgba(0,0,0,0.65);
+            --marker-elev: #f87171;
+            --marker-noelev: #cbd5e1;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
         html, body {
             height: 100%;
             margin: 0;
             padding: 0;
-            font-family: Arial, sans-serif;
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            overflow: hidden;
         }
+
         #map {
             height: 100%;
+            width: 100%;
+            background: var(--bg-secondary);
         }
-        /* Loading spinner overlay - full-screen */
+
+        /* ---------- Loading ---------- */
         #loading {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            inset: 0;
             display: none;
-            z-index: 1000;
-            background: rgba(255, 255, 255, 0.8);
+            z-index: 2000;
+            background: var(--overlay);
             justify-content: center;
             align-items: center;
-        }
-        .spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            border-top: 4px solid #3498db;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        /* Contact Button */
-        #contact-btn {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background-color: #3498db;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            font-size: 24px;
-            cursor: pointer;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            z-index: 1001;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        #contact-btn:hover {
-            background-color: #2980b9;
-        }
-        /* Modal Styles (for contact and report) */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1002;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.4);
-            justify-content: center;
-            align-items: center;
-        }
-        .modal-content {
-            background-color: #fefefe;
-            margin: auto;
-            padding: 20px;
-            border: 1px solid #888;
-            width: 80%;
-            max-width: 500px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-        .close {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .close:hover,
-        .close:focus {
-            color: black;
-            text-decoration: none;
-        }
-        form {
-            display: flex;
             flex-direction: column;
+            gap: 16px;
+            color: #fff;
+            font-size: 15px;
         }
-        input, textarea {
-            margin-bottom: 10px;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+        #loading.visible { display: flex; }
+        .spinner {
+            width: 42px;
+            height: 42px;
+            border: 3px solid rgba(255,255,255,0.25);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
         }
-        button[type="submit"] {
-            background-color: #27ae60;
-            color: white;
-            border: none;
-            padding: 10px;
-            cursor: pointer;
-            border-radius: 4px;
-        }
-        button[type="submit"]:hover {
-            background-color: #219a52;
-        }
-        #form-feedback, #report-feedback {
-            margin-top: 10px;
-            font-size: 14px;
-        }
-        /* Search Bar Styles */
-        #search-container {
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ---------- Top Search Bar ---------- */
+        #search-bar {
             position: absolute;
-            top: 10px;
+            top: 12px;
             left: 50%;
             transform: translateX(-50%);
-            z-index: 1001;
-            background: white;
-            padding: 5px;
-            border-radius: 4px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            z-index: 1100;
+            width: min(92vw, 480px);
             display: flex;
+            gap: 6px;
+            align-items: center;
         }
+
+        .search-wrapper {
+            flex: 1;
+            position: relative;
+            display: flex;
+            background: var(--panel-bg);
+            border-radius: 999px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
         #search-input {
-            padding: 5px;
-            border: 1px solid #ddd;
-            border-radius: 4px 0 0 4px;
-            width: 200px;
-        }
-        #search-btn {
-            padding: 5px 10px;
-            background: #3498db;
-            color: white;
+            flex: 1;
             border: none;
-            border-radius: 0 4px 4px 0;
-            cursor: pointer;
+            outline: none;
+            padding: 12px 16px 12px 44px;
+            font-size: 15px;
+            background: transparent;
+            color: var(--text);
+            min-width: 0;
         }
-        #search-btn:hover {
-            background: #2980b9;
+        #search-input::placeholder { color: var(--text-muted); }
+
+        .search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            pointer-events: none;
+            font-size: 16px;
         }
-        /* Donate Button */
-        #donate-btn {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            background-color: #f39c12;
-            color: white;
+
+        #search-btn, #locate-btn, #theme-btn {
             border: none;
             border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            font-size: 24px;
-            cursor: pointer;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            z-index: 1001;
+            width: 44px;
+            height: 44px;
             display: flex;
             align-items: center;
             justify-content: center;
+            cursor: pointer;
+            background: var(--panel-bg);
+            color: var(--text);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            font-size: 18px;
+            flex-shrink: 0;
+            transition: background 0.15s, transform 0.1s;
         }
-        #donate-btn:hover {
-            background-color: #e67e22;
+        #search-btn {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+            border-radius: 0 999px 999px 0;
+            width: 48px;
+            height: auto;
+            align-self: stretch;
         }
-        /* Donate Modal Styles (similar to contact) */
-        #donate-modal {
-            display: none;
-            position: fixed;
-            z-index: 1002;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.4);
-            justify-content: center;
-            align-items: center;
-        }
-        .donate-content {
-            background-color: #fefefe;
-            margin: auto;
-            padding: 15px; /* Reduced padding for mobile */
-            border: 1px solid #888;
-            width: 90%; /* Wider on small screens */
-            max-width: 400px; /* Tighter max for better fit */
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            text-align: center;
-        }
-        #btc-qr {
-            margin: 10px auto;
-            width: 150px;
-            height: 150px;
-        }
-        .donate-option {
-            margin: 15px 0;
-        }
-        .donate-link {
-            background-color: #3498db;
-            color: white;
-            padding: 10px;
-            text-decoration: none;
-            border-radius: 4px;
-            display: inline-block;
-        }
-        .donate-link:hover {
-            background-color: #2980b9;
-        }
-        /* Fix for long text overflow (e.g., BTC address) */
-        .btc-address {
-            word-break: break-all; /* Wrap long strings */
-            font-family: monospace; /* Better readability for addresses */
-            display: block;
-            margin-top: 5px;
-        }
-        /* Bottom Slide-Up Panel */
-        #benchmark-panel {
-            position: fixed;
-            bottom: -300px; /* Hidden below screen */
-            left: 0;
-            width: 100%;
-            background-color: white;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
-            transition: bottom 0.3s ease-in-out;
-            z-index: 1001;
-            padding: 20px;
-            box-sizing: border-box;
-            overflow-y: auto;
-            max-height: 300px; /* Initial height; expandable later */
-        }
-        #benchmark-panel.visible {
-            bottom: 0; /* Slide up */
-        }
-        #panel-close {
+        #search-btn:hover { background: var(--accent-hover); }
+        #locate-btn:hover, #theme-btn:hover { background: var(--bg-secondary); }
+        #locate-btn:active, #theme-btn:active, #search-btn:active { transform: scale(0.95); }
+
+        /* Search suggestions dropdown */
+        #suggestions {
             position: absolute;
-            top: 10px;
-            right: 10px;
-            background: none;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: var(--panel-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            max-height: 280px;
+            overflow-y: auto;
+            display: none;
+            z-index: 1200;
+        }
+        #suggestions.visible { display: block; }
+        .suggestion-item {
+            padding: 10px 14px;
+            cursor: pointer;
+            font-size: 14px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item:hover, .suggestion-item.active {
+            background: var(--bg-secondary);
+        }
+        .suggestion-id { font-weight: 600; color: var(--accent); }
+        .suggestion-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .suggestion-type {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        /* ---------- Floating Action Buttons ---------- */
+        .fab-group {
+            position: fixed;
+            bottom: 28px;
+            right: 16px;
+            z-index: 1100;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .fab {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
             border: none;
+            background: var(--panel-bg);
+            color: var(--text);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
             font-size: 20px;
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.15s, background 0.15s;
         }
-        /* Report Button in Panel */
-        #panel-report {
-            position: absolute;
-            top: 10px;
-            right: 40px; /* Next to close */
-            background: none;
-            border: none;
-            font-size: 16px;
-            color: #e74c3c; /* Red for report */
-            cursor: pointer;
+        .fab:hover { transform: scale(1.06); background: var(--bg-secondary); }
+        .fab.primary {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
         }
-        #panel-report:hover {
-            color: #c0392b;
+        .fab.donate {
+            background: var(--warning);
+            color: #fff;
+            border-color: var(--warning);
         }
-        #panel-content {
-            margin-top: 20px;
+
+        /* Left side fabs */
+        .fab-left {
+            position: fixed;
+            bottom: 28px;
+            left: 16px;
+            z-index: 1100;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
-        /* Disclaimer Footer */
-        footer {
+
+        /* ---------- Bottom Detail Panel ---------- */
+        #detail-panel {
             position: fixed;
             bottom: 0;
             left: 0;
-            width: 100%;
-            background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent over map */
-            text-align: center;
-            padding: 5px 0;
-            font-size: 12px;
-            color: #666;
-            z-index: 1000; /* Above map but below controls/buttons */
+            right: 0;
+            z-index: 1150;
+            background: var(--panel-bg);
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -8px 30px rgba(0,0,0,0.18);
+            transform: translateY(110%);
+            transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+            max-height: 55vh;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border);
+            border-bottom: none;
         }
-        /* Custom style for benchmark labels (optional tweaks) */
-        .benchmark-label {
-            background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent bg */
-            border: 1px solid #ccc;
-            padding: 2px 5px;
+        #detail-panel.visible { transform: translateY(0); }
+
+        .panel-handle {
+            width: 40px;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            margin: 10px auto 4px;
+            flex-shrink: 0;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 16px 8px;
+            flex-shrink: 0;
+        }
+        .panel-title {
+            font-size: 17px;
+            font-weight: 700;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .elev-badge {
             font-size: 12px;
-            border-radius: 3px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: var(--bg-secondary);
+            color: var(--text-muted);
+        }
+        .elev-badge.has-elev {
+            background: color-mix(in srgb, var(--marker-elev) 18%, transparent);
+            color: var(--marker-elev);
+        }
+
+        .panel-actions-top {
+            display: flex;
+            gap: 4px;
+        }
+        .icon-btn {
+            background: none;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .icon-btn:hover { background: var(--bg-secondary); color: var(--text); }
+        .icon-btn.danger:hover { color: var(--danger); }
+
+        .panel-body {
+            padding: 0 16px 16px;
+            overflow-y: auto;
+            flex: 1;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .info-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            font-size: 14px;
+            line-height: 1.45;
+        }
+        .info-label {
+            flex: 0 0 90px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        .info-value {
+            flex: 1;
+            word-break: break-word;
+        }
+        .info-value.mono { font-family: ui-monospace, monospace; font-size: 13px; }
+
+        .panel-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+        .action-btn {
+            flex: 1 1 auto;
+            min-width: 110px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: background 0.15s;
+        }
+        .action-btn:hover { background: var(--border); }
+        .action-btn.primary {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+        .action-btn.primary:hover { background: var(--accent-hover); }
+
+        /* ---------- Modals ---------- */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            background: var(--overlay);
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+        }
+        .modal.visible { display: flex; }
+
+        .modal-content {
+            background: var(--panel-bg);
+            border-radius: var(--radius);
+            width: 100%;
+            max-width: 420px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 18px 8px;
+        }
+        .modal-header h2 {
+            margin: 0;
+            font-size: 18px;
+        }
+        .modal-body { padding: 8px 18px 20px; }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-muted);
+            line-height: 1;
+            padding: 4px;
+        }
+        .close-btn:hover { color: var(--text); }
+
+        form { display: flex; flex-direction: column; gap: 10px; }
+        input, textarea {
+            padding: 11px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            background: var(--bg);
+            color: var(--text);
+            font-family: inherit;
+        }
+        input:focus, textarea:focus {
+            outline: 2px solid var(--accent);
+            outline-offset: 1px;
+        }
+        button[type="submit"] {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 4px;
+        }
+        button[type="submit"]:hover { background: var(--accent-hover); }
+
+        .form-feedback {
+            margin-top: 8px;
+            font-size: 13px;
+            min-height: 18px;
+        }
+
+        /* Donate specific */
+        .donate-option { margin: 16px 0; text-align: center; }
+        .btc-address {
+            word-break: break-all;
+            font-family: ui-monospace, monospace;
+            font-size: 13px;
+            display: block;
+            margin: 8px 0;
+            background: var(--bg-secondary);
+            padding: 8px 10px;
+            border-radius: 6px;
+        }
+        #btc-qr { margin: 12px auto; width: 150px; height: 150px; }
+
+        /* ---------- Footer / Disclaimer ---------- */
+        #disclaimer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: color-mix(in srgb, var(--panel-bg) 92%, transparent);
+            backdrop-filter: blur(6px);
+            text-align: center;
+            padding: 5px 12px;
+            font-size: 11px;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border);
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        #disclaimer.hidden { opacity: 0; }
+
+        /* ---------- Leaflet overrides ---------- */
+        .leaflet-control-layers {
+            border-radius: 10px !important;
+            border: 1px solid var(--border) !important;
+            box-shadow: var(--shadow) !important;
+            background: var(--panel-bg) !important;
+            color: var(--text) !important;
+        }
+        .leaflet-control-layers-expanded {
+            padding: 10px 12px !important;
+        }
+        .leaflet-control-scale-line {
+            background: var(--panel-bg) !important;
+            color: var(--text) !important;
+            border-color: var(--border) !important;
+        }
+        .leaflet-bar a {
+            background: var(--panel-bg) !important;
+            color: var(--text) !important;
+            border-bottom-color: var(--border) !important;
+        }
+
+        /* Custom marker tooltip (ID label) */
+        .benchmark-label {
+            background: color-mix(in srgb, var(--panel-bg) 90%, transparent) !important;
+            border: 1px solid var(--border) !important;
+            color: var(--text) !important;
+            padding: 1px 5px !important;
+            font-size: 11px !important;
+            font-weight: 600 !important;
+            border-radius: 4px !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important;
+            white-space: nowrap;
+        }
+        .leaflet-tooltip-right.benchmark-label::before { border-right-color: var(--border) !important; }
+
+        /* Status toast */
+        #toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: var(--panel-bg);
+            color: var(--text);
+            padding: 10px 18px;
+            border-radius: 999px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            font-size: 14px;
+            z-index: 3000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s, transform 0.25s;
+            max-width: 90vw;
+            text-align: center;
+        }
+        #toast.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Mobile tweaks */
+        @media (max-width: 480px) {
+            #search-bar { top: 10px; width: calc(100% - 20px); }
+            #search-input { padding: 11px 12px 11px 40px; font-size: 14px; }
+            .fab, #locate-btn, #theme-btn { width: 46px; height: 46px; }
+            #detail-panel { max-height: 62vh; }
+            .info-label { flex: 0 0 78px; }
         }
     </style>
 </head>
 <body>
-    <div id="map"></div>
-    <div id="loading"><div class="spinner"></div></div>
-    <!-- Search Container -->
-    <div id="search-container">
-        <input type="text" id="search-input" list="benchmark-ids" placeholder="Enter Benchmark ID (e.g., 1-1)">
-        <button id="search-btn">Search</button>
-    </div>
-    <datalist id="benchmark-ids"></datalist>
-    <!-- Donate Button -->
-    <button id="donate-btn" title="Donate">💰</button>
-    <!-- Donate Modal -->
-    <div id="donate-modal">
-        <div class="donate-content">
-            <span class="close">&times;</span>
-            <h2>Support the Project</h2>
-            <p>If this benchmarks map helps your work, consider a donation! Thanks for supporting geodetic tools for surveyors.</p>
-            <div class="donate-option">
-                <a href="https://www.buymeacoffee.com/Pulsestriker"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a hot chocolate&emoji=☕&slug=Pulsestriker&button_colour=40DCA5&font_colour=ffffff&font_family=Comic&outline_colour=000000&coffee_colour=FFDD00" /></a>
-            </div>
-            <div class="donate-option">
-                <strong>Bitcoin:</strong> <span class="btc-address">3NHguEkzt1WSUV36LgTbVPwyYDEQbbHdax</span>
-                <div id="btc-qr"></div>
-            </div>
-        </div>
-    </div>
-    <!-- Contact Button -->
-    <button id="contact-btn" title="Contact Us">?</button>
-    <!-- Contact Modal -->
-    <div id="contact-modal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>Contact Us</h2>
-            <p>Report bugs, missing info, or ask questions about the benchmarks.</p>
-            <form id="contact-form">
-                <input type="text" id="name" placeholder="Your Name" required>
-                <input type="email" id="email" placeholder="Your Email" required>
-                <textarea id="message" placeholder="Your Message" rows="5" required></textarea>
-                <button type="submit">Send</button>
-            </form>
-            <div id="form-feedback"></div>
-        </div>
-    </div>
-    <!-- Report Modal -->
-    <div id="report-modal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>Report Benchmark Issue</h2>
-            <p>Describe the issue with this benchmark (e.g., wrong location, elevation error).</p>
-            <form id="report-form">
-                <input type="text" id="report-name" placeholder="Your Name (optional)">
-                <input type="email" id="report-email" placeholder="Your Email (optional)">
-                <textarea id="report-message" placeholder="Describe the issue..." rows="5" required></textarea>
-                <button type="submit">Send Report</button>
-            </form>
-            <div id="report-feedback"></div>
-        </div>
-    </div>
-    <!-- Bottom Slide-Up Panel -->
-    <div id="benchmark-panel">
-        <button id="panel-close">×</button>
-        <button id="panel-report">Report</button> <!-- Report button -->
-        <div id="panel-content"></div>
-    </div>
-    <!-- Disclaimer Footer -->
-    <footer>
-        Note: Benchmark locations are approximate. There is no guarantee of accuracy—use at your own risk and double-check data.
-    </footer>
+    <div id="map" role="application" aria-label="Geodetic benchmarks map"></div>
 
-    <!-- Leaflet JS -->
+    <div id="loading" aria-live="polite">
+        <div class="spinner"></div>
+        <span id="loading-text">Loading benchmarks…</span>
+    </div>
+
+    <!-- Search -->
+    <div id="search-bar">
+        <div class="search-wrapper">
+            <span class="search-icon" aria-hidden="true">🔍</span>
+            <input type="search" id="search-input" placeholder="Benchmark ID or address…" autocomplete="off" aria-label="Search by benchmark ID or address" aria-autocomplete="list" aria-controls="suggestions">
+            <button id="search-btn" type="button" title="Search" aria-label="Search">Go</button>
+            <div id="suggestions" role="listbox"></div>
+        </div>
+        <button id="locate-btn" type="button" title="My location" aria-label="Go to my location">📍</button>
+        <button id="theme-btn" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+    </div>
+
+    <!-- Left FABs -->
+    <div class="fab-left">
+        <button class="fab donate" id="donate-btn" title="Support the project" aria-label="Donate">☕</button>
+    </div>
+
+    <!-- Right FABs -->
+    <div class="fab-group">
+        <button class="fab" id="contact-btn" title="Contact / Help" aria-label="Contact us">❓</button>
+    </div>
+
+    <!-- Detail Panel -->
+    <div id="detail-panel" role="dialog" aria-labelledby="panel-title" aria-hidden="true">
+        <div class="panel-handle" aria-hidden="true"></div>
+        <div class="panel-header">
+            <h2 class="panel-title" id="panel-title">
+                <span id="panel-id">—</span>
+                <span class="elev-badge" id="panel-elev-badge"></span>
+            </h2>
+            <div class="panel-actions-top">
+                <button class="icon-btn danger" id="panel-report" title="Report issue" aria-label="Report issue">⚑</button>
+                <button class="icon-btn" id="panel-close" title="Close" aria-label="Close panel">✕</button>
+            </div>
+        </div>
+        <div class="panel-body">
+            <div class="info-row">
+                <span class="info-label">GSCM</span>
+                <span class="info-value mono" id="panel-gscm">—</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Elevation</span>
+                <span class="info-value" id="panel-elev">—</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Coordinates</span>
+                <span class="info-value mono" id="panel-coords">—</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Description</span>
+                <span class="info-value" id="panel-desc">—</span>
+            </div>
+            <div class="panel-actions">
+                <button class="action-btn primary" id="btn-directions" type="button">🧭 Directions</button>
+                <button class="action-btn" id="btn-copy" type="button">📋 Copy coords</button>
+                <button class="action-btn" id="btn-google" type="button">🗺 Google Maps</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contact Modal -->
+    <div id="contact-modal" class="modal" role="dialog" aria-labelledby="contact-title">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="contact-title">Contact</h2>
+                <button class="close-btn" data-close="contact-modal" aria-label="Close">×</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-top:0;color:var(--text-muted);font-size:14px;">Report bugs, missing data, or ask questions about the benchmarks.</p>
+                <form id="contact-form">
+                    <input type="text" id="contact-name" placeholder="Your name" required>
+                    <input type="email" id="contact-email" placeholder="Your email" required>
+                    <textarea id="contact-message" placeholder="Your message" rows="4" required></textarea>
+                    <button type="submit">Send message</button>
+                </form>
+                <div class="form-feedback" id="contact-feedback"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Modal -->
+    <div id="report-modal" class="modal" role="dialog" aria-labelledby="report-title">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="report-title">Report Issue</h2>
+                <button class="close-btn" data-close="report-modal" aria-label="Close">×</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-top:0;color:var(--text-muted);font-size:14px;">Describe the problem with this benchmark (wrong location, missing elevation, etc.).</p>
+                <form id="report-form">
+                    <input type="text" id="report-name" placeholder="Your name (optional)">
+                    <input type="email" id="report-email" placeholder="Your email (optional)">
+                    <textarea id="report-message" placeholder="Describe the issue…" rows="4" required></textarea>
+                    <button type="submit">Send report</button>
+                </form>
+                <div class="form-feedback" id="report-feedback"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Donate Modal -->
+    <div id="donate-modal" class="modal" role="dialog" aria-labelledby="donate-title">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="donate-title">Support the Project</h2>
+                <button class="close-btn" data-close="donate-modal" aria-label="Close">×</button>
+            </div>
+            <div class="modal-body" style="text-align:center;">
+                <p style="color:var(--text-muted);font-size:14px;margin-top:0;">If this map helps your work, consider a small donation. Thank you!</p>
+                <div class="donate-option">
+                    <a href="https://www.buymeacoffee.com/Pulsestriker" target="_blank" rel="noopener">
+                        <img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20hot%20chocolate&emoji=%E2%98%95&slug=Pulsestriker&button_colour=40DCA5&font_colour=ffffff&font_family=Comic&outline_colour=000000&coffee_colour=FFDD00" alt="Buy me a hot chocolate">
+                    </a>
+                </div>
+                <div class="donate-option">
+                    <strong>Bitcoin</strong>
+                    <span class="btc-address" id="btc-address-text">3NHguEkzt1WSUV36LgTbVPwyYDEQbbHdax</span>
+                    <div id="btc-qr"></div>
+                    <button class="action-btn" id="copy-btc" type="button" style="margin:8px auto;max-width:200px;">Copy address</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="disclaimer">
+        Benchmark locations are approximate. No guarantee of accuracy — verify independently before use.
+    </div>
+
+    <div id="toast" role="status" aria-live="polite"></div>
+
+    <!-- Scripts -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Leaflet MarkerCluster JS -->
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-    <!-- EmailJS SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
     <script>
-        let map;
-        let userMarker;
-        let baseLayers; // For switchable tiles
-        let loadingTimeout; // For fallback hide
-        let elevCluster; // Cluster for benchmarks with elevation (red, default on)
-        let noElevCluster; // Cluster for no-elevation (black, default off)
-        let benchmarksData = []; // Store benchmarks for searching
-        let benchmarkMarkers = new Map(); // Map ID to marker for quick access
-        let currentBenchmark = null; // To store clicked benchmark data
+    (function () {
+        'use strict';
 
-        // Initialize the map
+        // ---------- State ----------
+        let map, elevCluster, noElevCluster, userMarker;
+        let benchmarksData = [];
+        let benchmarkMarkers = new Map(); // id (lowercase) -> marker
+        let currentBenchmark = null;
+        let labelsVisible = false;
+        const LABEL_ZOOM_THRESHOLD = 14;
+        let searchDebounce = null;
+        let activeSuggestion = -1;
+
+        // ---------- Theme ----------
+        function initTheme() {
+            const saved = localStorage.getItem('bm-theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = saved || (prefersDark ? 'dark' : 'light');
+            setTheme(theme);
+        }
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('bm-theme', theme);
+            document.getElementById('theme-btn').textContent = theme === 'dark' ? '☀️' : '🌙';
+        }
+        function toggleTheme() {
+            const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            setTheme(next);
+        }
+
+        // ---------- Loading / Toast ----------
+        function showLoading(show, text) {
+            const el = document.getElementById('loading');
+            if (text) document.getElementById('loading-text').textContent = text;
+            el.classList.toggle('visible', !!show);
+        }
+        function toast(msg, ms = 2400) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('visible');
+            clearTimeout(t._timer);
+            t._timer = setTimeout(() => t.classList.remove('visible'), ms);
+        }
+
+        // ---------- Map init ----------
         function initMap() {
-            // Default center (Winnipeg as fallback)
-            const defaultCenter = [49.8951, -97.1384];
+            const defaultCenter = [49.8951, -97.1384]; // Winnipeg
             map = L.map('map', {
-                fullscreenControl: false, // No fullscreen button
+                zoomControl: true,
                 attributionControl: true
-            }).setView(defaultCenter, 11); // Default zoom 11
+            }).setView(defaultCenter, 11);
 
-            // Define switchable base layers (with Grayscale)
-            baseLayers = {
-                'Street Map': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            const baseLayers = {
+                'Street': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
                     maxZoom: 19
                 }),
-                'Grayscale': L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/toner/{z}/{x}/{y}{r}.png', {
-                    attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                'Grayscale': L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                    maxZoom: 20,
+                    subdomains: 'abcd'
+                }),
+                'Dark': L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
                     maxZoom: 20,
                     subdomains: 'abcd'
                 }),
                 'Satellite': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+                    attribution: 'Tiles &copy; Esri',
                     maxZoom: 18
                 }),
                 'Terrain': L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-                    attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)',
+                    attribution: 'Map data: &copy; OpenStreetMap, SRTM | Style: &copy; OpenTopoMap (CC-BY-SA)',
                     maxZoom: 17
                 })
             };
 
-            // Add default layer and layers control
-            baseLayers['Street Map'].addTo(map);
-            const layersControl = L.control.layers(baseLayers).addTo(map);
+            baseLayers['Street'].addTo(map);
+            const layersControl = L.control.layers(baseLayers, null, { position: 'topright' }).addTo(map);
+            L.control.scale({ imperial: false, metric: true }).addTo(map);
 
-            // Add scale control
-            L.control.scale({ imperial: false }).addTo(map); // Metric scale
+            elevCluster = L.markerClusterGroup({
+                showCoverageOnHover: false,
+                maxClusterRadius: 55,
+                spiderfyOnMaxZoom: true,
+                disableClusteringAtZoom: 17
+            });
+            noElevCluster = L.markerClusterGroup({
+                showCoverageOnHover: false,
+                maxClusterRadius: 55,
+                spiderfyOnMaxZoom: true,
+                disableClusteringAtZoom: 17
+            });
 
-            // Separate cluster groups
-            elevCluster = L.markerClusterGroup();
-            noElevCluster = L.markerClusterGroup();
-            map.addLayer(elevCluster); // Elev on by default
+            map.addLayer(elevCluster);
+            layersControl.addOverlay(noElevCluster, 'No-elevation marks');
 
-            // Add no-elev to layers control as toggle (off by default)
-            layersControl.addOverlay(noElevCluster, 'Show No-Elevation Benchmarks');
+            // Label visibility by zoom
+            map.on('zoomend', updateLabelVisibility);
+            map.on('moveend', () => {
+                // hide disclaimer slightly when interacting
+                document.getElementById('disclaimer').classList.add('hidden');
+                clearTimeout(window._discTimer);
+                window._discTimer = setTimeout(() => {
+                    document.getElementById('disclaimer').classList.remove('hidden');
+                }, 2500);
+            });
 
-            // Load benchmarks from JSON
             loadBenchmarks();
+            getUserLocation(false); // quiet on first load
 
-            // Request user's location with loading
-            showLoading(true);
-            getUserLocation();
-
-            // Initialize EmailJS with your key
-            emailjs.init('M8jgVemzgmiQn7Jte'); // From EmailJS dashboard
-
-            // Setup search functionality
-            setupSearch();
-
-            // Setup panel close button
-            document.getElementById('panel-close').addEventListener('click', hidePanel);
-
-            // Setup report button in panel
-            document.getElementById('panel-report').addEventListener('click', showReportModal);
+            emailjs.init('M8jgVemzgmiQn7Jte');
+            setupUI();
         }
 
-        // Function to load benchmarks from JSON file
-        async function loadBenchmarks() {
-            try {
-                const response = await fetch('benchmarks.json');
-                benchmarksData = await response.json(); // Store data globally
-
-                // Populate datalist for autocomplete
-                const datalist = document.getElementById('benchmark-ids');
-                benchmarksData.forEach(benchmark => {
-                    const option = document.createElement('option');
-                    option.value = benchmark.id;
-                    datalist.appendChild(option);
-
-                    const pos = [benchmark.lat, benchmark.lng];
-                    const elev = benchmark.elev || ''; // Handle missing elev
-                    const isBlankElev = !elev.trim(); // Check if blank/empty
-
-                    // Choose color: black for blank elev, red for others
-                    const dotColor = isBlankElev ? '#000000' : '#ff0000';
-
-                    const marker = L.circleMarker(pos, {
-                        title: benchmark.id,
-                        alt: 'Benchmark marker',
-                        radius: 6, // Slightly smaller than user dot for distinction
-                        fillColor: dotColor,
-                        color: dotColor,
-                        fillOpacity: 1,
-                        weight: 1 // Thin border
-                    });
-
-                    // Bind click event to show panel instead of popup
-                    marker.on('click', () => showBenchmarkPanel(benchmark));
-
-                    // New: Bind permanent tooltip as label (ID beside dot)
-                    marker.bindTooltip(benchmark.id, {
-                        permanent: true, // Always show
-                        direction: 'right', // Beside to the right
-                        offset: L.point(15, 0), // Offset from dot
-                        className: 'benchmark-label', // Custom class for styling if needed
-                        opacity: 0.9
-                    });
-
-                    // Store marker by ID for quick access
-                    benchmarkMarkers.set(benchmark.id.toLowerCase(), marker);
-
-                    // Add to appropriate cluster
-                    if (isBlankElev) {
-                        noElevCluster.addLayer(marker);
-                    } else {
-                        elevCluster.addLayer(marker);
+        function updateLabelVisibility() {
+            const show = map.getZoom() >= LABEL_ZOOM_THRESHOLD;
+            if (show === labelsVisible) return;
+            labelsVisible = show;
+            benchmarkMarkers.forEach(marker => {
+                if (show) {
+                    if (!marker.getTooltip()) {
+                        marker.bindTooltip(marker.options._bmId, {
+                            permanent: true,
+                            direction: 'right',
+                            offset: L.point(12, 0),
+                            className: 'benchmark-label',
+                            opacity: 0.95
+                        });
                     }
-                });
-            } catch (error) {
-                console.error('Error loading benchmarks:', error);
-                alert('Failed to load benchmarks data. Check console for details.');
-            }
-        }
-
-        // Show bottom panel with benchmark info
-        function showBenchmarkPanel(benchmark) {
-            const panelContent = document.getElementById('panel-content');
-            panelContent.innerHTML = `
-                <b>ID:</b> ${benchmark.id}<br>
-                <b>Elevation:</b> ${benchmark.elev || 'N/A'}<br>
-                <b>Description:</b> ${benchmark.desc || 'No description'}
-            `;
-            document.getElementById('benchmark-panel').classList.add('visible');
-            currentBenchmark = benchmark; // Store for report
-        }
-
-        // Hide bottom panel
-        function hidePanel() {
-            document.getElementById('benchmark-panel').classList.remove('visible');
-        }
-
-        // Show report modal with prefilled subject
-        function showReportModal() {
-            if (!currentBenchmark) return;
-            const reportModal = document.getElementById('report-modal');
-            reportModal.style.display = 'flex';
-            // Prefill subject in email (handled in submit)
-        }
-
-        // Hide report modal
-        function hideReportModal() {
-            document.getElementById('report-modal').style.display = 'none';
-        }
-
-        // Setup search input and button
-        function setupSearch() {
-            const searchInput = document.getElementById('search-input');
-            const searchBtn = document.getElementById('search-btn');
-
-            searchBtn.addEventListener('click', performSearch);
-            searchInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    performSearch();
+                } else {
+                    marker.unbindTooltip();
                 }
             });
         }
 
-        // Perform the ID search
-        function performSearch() {
-            const searchInput = document.getElementById('search-input');
-            const query = searchInput.value.trim().toLowerCase();
-            if (!query) {
-                alert('Please enter a Benchmark ID.');
-                return;
-            }
+        // ---------- Data ----------
+        async function loadBenchmarks() {
+            showLoading(true, 'Loading benchmarks…');
+            try {
+                const res = await fetch('benchmarks.json');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                benchmarksData = await res.json();
 
-            const marker = benchmarkMarkers.get(query);
-            if (marker) {
-                // Zoom and pan to the location with animation
-                map.flyTo(marker.getLatLng(), 15, { duration: 1.0 });
+                const elevColor = getComputedStyle(document.documentElement).getPropertyValue('--marker-elev').trim() || '#ef4444';
+                const noElevColor = getComputedStyle(document.documentElement).getPropertyValue('--marker-noelev').trim() || '#1f2937';
 
-                // Simulate click to show panel
-                marker.fire('click');
-            } else {
-                alert('Benchmark ID not found. Try another ID.');
-            }
+                benchmarksData.forEach(bm => {
+                    const hasElev = bm.elev && String(bm.elev).trim() !== '';
+                    const color = hasElev ? elevColor : noElevColor;
+                    const marker = L.circleMarker([bm.lat, bm.lng], {
+                        radius: 6,
+                        fillColor: color,
+                        color: color,
+                        weight: 1,
+                        fillOpacity: 0.92,
+                        _bmId: bm.id
+                    });
 
-            // Clear input for next search
-            searchInput.value = '';
-        }
+                    marker.on('click', () => openPanel(bm));
+                    benchmarkMarkers.set(String(bm.id).toLowerCase(), marker);
 
-        // Function to get and display user's location
-        function getUserLocation() {
-            if (navigator.geolocation) {
-                loadingTimeout = setTimeout(() => {
-                    showLoading(false);
-                    alert('Location request timed out. Using default view without user location.');
-                }, 10000);
+                    if (hasElev) elevCluster.addLayer(marker);
+                    else noElevCluster.addLayer(marker);
+                });
 
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        clearTimeout(loadingTimeout);
-                        const userPos = [position.coords.latitude, position.coords.longitude];
-
-                        if (userMarker) {
-                            map.removeLayer(userMarker);
-                        }
-                        userMarker = L.circleMarker(userPos, {
-                            title: 'Your Location',
-                            alt: 'User location marker',
-                            radius: 8,
-                            fillColor: '#3388ff',
-                            color: '#3388ff',
-                            fillOpacity: 1,
-                            weight: 2
-                        }).addTo(map)
-                          .bindPopup('<b>Your Current Position</b><br>Lat: ' + userPos[0].toFixed(4) + '<br>Lng: ' + userPos[1].toFixed(4));
-
-                        showLoading(false);
-                    },
-                    (error) => {
-                        clearTimeout(loadingTimeout);
-                        console.error('Error getting location:', error);
-                        alert('Unable to get your location. Please enable location services or check permissions.');
-                        showLoading(false);
-                    },
-                    { enableHighAccuracy: true }
-                );
-            } else {
-                alert('Geolocation is not supported by this browser.');
+                // Initial label state
+                updateLabelVisibility();
+                toast(`Loaded ${benchmarksData.length.toLocaleString()} benchmarks`);
+            } catch (err) {
+                console.error(err);
+                toast('Failed to load benchmarks data');
+            } finally {
                 showLoading(false);
             }
         }
 
-        // Show/hide loading spinner
-        function showLoading(show) {
-            document.getElementById('loading').style.display = show ? 'flex' : 'none';
+        // ---------- Panel ----------
+        function openPanel(bm) {
+            currentBenchmark = bm;
+            const hasElev = bm.elev && String(bm.elev).trim() !== '';
+
+            document.getElementById('panel-id').textContent = bm.id;
+            const badge = document.getElementById('panel-elev-badge');
+            if (hasElev) {
+                badge.textContent = bm.elev + ' m';
+                badge.classList.add('has-elev');
+            } else {
+                badge.textContent = 'No elev.';
+                badge.classList.remove('has-elev');
+            }
+
+            document.getElementById('panel-gscm').textContent = bm.gscm || '—';
+            document.getElementById('panel-elev').textContent = hasElev ? bm.elev + ' m' : 'Not available';
+            document.getElementById('panel-coords').textContent =
+                Number(bm.lat).toFixed(8) + ', ' + Number(bm.lng).toFixed(8);
+            document.getElementById('panel-desc').textContent = bm.desc || 'No description available.';
+
+            const panel = document.getElementById('detail-panel');
+            panel.classList.add('visible');
+            panel.setAttribute('aria-hidden', 'false');
+            document.getElementById('disclaimer').classList.add('hidden');
         }
 
-        // Contact Modal Logic
-        const modal = document.getElementById('contact-modal');
-        const btn = document.getElementById('contact-btn');
-        const closeBtn = modal.querySelector('.close');
-        const form = document.getElementById('contact-form');
-        const feedback = document.getElementById('form-feedback');
+        function closePanel() {
+            const panel = document.getElementById('detail-panel');
+            panel.classList.remove('visible');
+            panel.setAttribute('aria-hidden', 'true');
+            currentBenchmark = null;
+            document.getElementById('disclaimer').classList.remove('hidden');
+        }
 
-        btn.onclick = () => { modal.style.display = 'flex'; };
-        closeBtn.onclick = () => { modal.style.display = 'none'; };
-        window.addEventListener('click', (event) => {
-            if (event.target === modal) { modal.style.display = 'none'; }
-        });
+        // ---------- Search (ID + Address) ----------
+        function setupSearch() {
+            const input = document.getElementById('search-input');
+            const btn = document.getElementById('search-btn');
+            const suggestions = document.getElementById('suggestions');
 
-        form.onsubmit = (e) => {
-            e.preventDefault();
-            feedback.textContent = 'Sending...';
-            feedback.style.color = 'blue';
-
-            emailjs.send('service_g8bddtz', 'template_qdkr30n', {
-                from_name: document.getElementById('name').value,
-                from_email: document.getElementById('email').value,
-                message: document.getElementById('message').value
-            })
-            .then(() => {
-                feedback.textContent = 'Message sent successfully!';
-                feedback.style.color = 'green';
-                form.reset();
-                setTimeout(() => { modal.style.display = 'none'; }, 2000);
-            }, (error) => {
-                console.error('EmailJS error:', error);
-                feedback.textContent = 'Failed to send. Try again later.';
-                feedback.style.color = 'red';
+            input.addEventListener('input', () => {
+                clearTimeout(searchDebounce);
+                const q = input.value.trim();
+                if (q.length < 1) {
+                    hideSuggestions();
+                    return;
+                }
+                searchDebounce = setTimeout(() => showSuggestions(q), 180);
             });
-        };
 
-        // Report Modal Logic (similar to contact)
-        const reportModal = document.getElementById('report-modal');
-        const reportCloseBtn = reportModal.querySelector('.close');
-        const reportForm = document.getElementById('report-form');
-        const reportFeedback = document.getElementById('report-feedback');
+            input.addEventListener('keydown', (e) => {
+                const items = suggestions.querySelectorAll('.suggestion-item');
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    activeSuggestion = Math.min(activeSuggestion + 1, items.length - 1);
+                    highlightSuggestion(items);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    activeSuggestion = Math.max(activeSuggestion - 1, -1);
+                    highlightSuggestion(items);
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (activeSuggestion >= 0 && items[activeSuggestion]) {
+                        items[activeSuggestion].click();
+                    } else {
+                        performSearch();
+                    }
+                } else if (e.key === 'Escape') {
+                    hideSuggestions();
+                    input.blur();
+                }
+            });
 
-        reportCloseBtn.onclick = hideReportModal;
-        window.addEventListener('click', (event) => {
-            if (event.target === reportModal) hideReportModal();
-        });
+            btn.addEventListener('click', performSearch);
 
-        reportForm.onsubmit = (e) => {
+            // Close suggestions on outside click
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('#search-bar')) hideSuggestions();
+            });
+        }
+
+        function highlightSuggestion(items) {
+            items.forEach((el, i) => el.classList.toggle('active', i === activeSuggestion));
+        }
+
+        function hideSuggestions() {
+            document.getElementById('suggestions').classList.remove('visible');
+            activeSuggestion = -1;
+        }
+
+        function showSuggestions(query) {
+            const q = query.toLowerCase();
+            const suggestionsEl = document.getElementById('suggestions');
+            const matches = [];
+
+            // Exact / starts-with ID matches first
+            for (const bm of benchmarksData) {
+                const id = String(bm.id).toLowerCase();
+                if (id === q || id.startsWith(q)) {
+                    matches.push({ type: 'id', bm, score: id === q ? 100 : 80 });
+                }
+            }
+
+            // Description contains
+            if (matches.length < 12 && q.length >= 2) {
+                for (const bm of benchmarksData) {
+                    if (matches.some(m => m.bm.id === bm.id)) continue;
+                    if (bm.desc && bm.desc.toLowerCase().includes(q)) {
+                        matches.push({ type: 'desc', bm, score: 40 });
+                        if (matches.length >= 12) break;
+                    }
+                }
+            }
+
+            // GSCM match
+            if (matches.length < 12 && q.length >= 3) {
+                for (const bm of benchmarksData) {
+                    if (matches.some(m => m.bm.id === bm.id)) continue;
+                    if (bm.gscm && String(bm.gscm).toLowerCase().includes(q)) {
+                        matches.push({ type: 'gscm', bm, score: 50 });
+                        if (matches.length >= 12) break;
+                    }
+                }
+            }
+
+            matches.sort((a, b) => b.score - a.score);
+            const top = matches.slice(0, 10);
+
+            if (top.length === 0) {
+                // Offer address search hint
+                suggestionsEl.innerHTML = `
+                    <div class="suggestion-item" data-action="geocode" data-q="${escapeHtml(query)}">
+                        <span class="suggestion-type">Address search</span>
+                        <span>Search map for “${escapeHtml(query)}”</span>
+                    </div>`;
+            } else {
+                suggestionsEl.innerHTML = top.map(m => `
+                    <div class="suggestion-item" data-id="${escapeHtml(m.bm.id)}">
+                        <span class="suggestion-id">${escapeHtml(m.bm.id)}${m.bm.elev ? ' · ' + escapeHtml(m.bm.elev) + ' m' : ''}</span>
+                        <span class="suggestion-desc">${escapeHtml((m.bm.desc || '').slice(0, 90))}</span>
+                    </div>`).join('') +
+                    `<div class="suggestion-item" data-action="geocode" data-q="${escapeHtml(query)}">
+                        <span class="suggestion-type">Or search as address</span>
+                        <span>“${escapeHtml(query)}”</span>
+                    </div>`;
+            }
+
+            suggestionsEl.querySelectorAll('.suggestion-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    if (el.dataset.action === 'geocode') {
+                        geocodeAndFly(el.dataset.q);
+                    } else {
+                        const bm = benchmarksData.find(b => b.id === el.dataset.id);
+                        if (bm) {
+                            document.getElementById('search-input').value = bm.id;
+                            flyToBenchmark(bm);
+                        }
+                    }
+                    hideSuggestions();
+                });
+            });
+
+            suggestionsEl.classList.add('visible');
+            activeSuggestion = -1;
+        }
+
+        function performSearch() {
+            const q = document.getElementById('search-input').value.trim();
+            if (!q) {
+                toast('Enter a Benchmark ID or an address');
+                return;
+            }
+            hideSuggestions();
+
+            // Try exact ID first
+            const marker = benchmarkMarkers.get(q.toLowerCase());
+            if (marker) {
+                const bm = benchmarksData.find(b => String(b.id).toLowerCase() === q.toLowerCase());
+                if (bm) flyToBenchmark(bm);
+                return;
+            }
+
+            // Partial ID
+            const partial = benchmarksData.find(b => String(b.id).toLowerCase().startsWith(q.toLowerCase()));
+            if (partial) {
+                flyToBenchmark(partial);
+                return;
+            }
+
+            // Otherwise treat as address
+            geocodeAndFly(q);
+        }
+
+        function flyToBenchmark(bm) {
+            const marker = benchmarkMarkers.get(String(bm.id).toLowerCase());
+            if (!marker) return;
+            map.flyTo([bm.lat, bm.lng], Math.max(map.getZoom(), 16), { duration: 1.1 });
+            setTimeout(() => openPanel(bm), 400);
+        }
+
+        async function geocodeAndFly(query) {
+            showLoading(true, 'Searching address…');
+            try {
+                // Prefer results near Winnipeg / Manitoba by biasing the viewbox
+                const viewbox = '-99.5,48.5,-95.5,51.0'; // approx southern Manitoba
+                const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&viewbox=${viewbox}&bounded=0&countrycodes=ca`;
+                const res = await fetch(url, {
+                    headers: { 'Accept': 'application/json', 'User-Agent': 'GeodeticBenchmarksMap/1.0 (github.com/PulseStriker)' }
+                });
+                if (!res.ok) throw new Error('Geocoder error');
+                const results = await res.json();
+
+                if (!results || results.length === 0) {
+                    toast('No results found for that address or ID');
+                    return;
+                }
+
+                // Take best result
+                const best = results[0];
+                const lat = parseFloat(best.lat);
+                const lng = parseFloat(best.lon);
+                map.flyTo([lat, lng], 15, { duration: 1.2 });
+
+                // Temporary pin
+                if (window._searchPin) map.removeLayer(window._searchPin);
+                window._searchPin = L.marker([lat, lng], {
+                    title: best.display_name
+                }).addTo(map).bindPopup(`<strong>${escapeHtml(best.display_name)}</strong>`).openPopup();
+
+                toast(best.display_name.length > 60 ? best.display_name.slice(0, 57) + '…' : best.display_name, 3500);
+            } catch (err) {
+                console.error(err);
+                toast('Address search failed. Try a Benchmark ID instead.');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // ---------- Geolocation ----------
+        function getUserLocation(showToast = true) {
+            if (!navigator.geolocation) {
+                if (showToast) toast('Geolocation not supported');
+                return;
+            }
+            if (showToast) showLoading(true, 'Getting your location…');
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const { latitude, longitude } = pos.coords;
+                    if (userMarker) map.removeLayer(userMarker);
+                    userMarker = L.circleMarker([latitude, longitude], {
+                        radius: 9,
+                        fillColor: '#2563eb',
+                        color: '#fff',
+                        weight: 3,
+                        fillOpacity: 1
+                    }).addTo(map).bindTooltip('You are here', { permanent: false });
+                    map.flyTo([latitude, longitude], 14, { duration: 1.0 });
+                    if (showToast) toast('Location found');
+                    showLoading(false);
+                },
+                (err) => {
+                    console.warn(err);
+                    if (showToast) toast('Could not get location');
+                    showLoading(false);
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+            );
+        }
+
+        // ---------- UI wiring ----------
+        function setupUI() {
+            setupSearch();
+
+            document.getElementById('theme-btn').addEventListener('click', toggleTheme);
+            document.getElementById('locate-btn').addEventListener('click', () => getUserLocation(true));
+            document.getElementById('panel-close').addEventListener('click', closePanel);
+            document.getElementById('panel-report').addEventListener('click', () => {
+                if (currentBenchmark) openModal('report-modal');
+            });
+
+            // Panel action buttons
+            document.getElementById('btn-copy').addEventListener('click', () => {
+                if (!currentBenchmark) return;
+                const text = `${currentBenchmark.lat}, ${currentBenchmark.lng}`;
+                navigator.clipboard.writeText(text).then(() => toast('Coordinates copied')).catch(() => toast(text));
+            });
+            document.getElementById('btn-directions').addEventListener('click', () => {
+                if (!currentBenchmark) return;
+                const { lat, lng } = currentBenchmark;
+                // Prefer Apple Maps on iOS, otherwise geo: or Google
+                const isApple = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
+                const url = isApple
+                    ? `https://maps.apple.com/?daddr=${lat},${lng}`
+                    : `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+                window.open(url, '_blank');
+            });
+            document.getElementById('btn-google').addEventListener('click', () => {
+                if (!currentBenchmark) return;
+                window.open(`https://www.google.com/maps?q=${currentBenchmark.lat},${currentBenchmark.lng}`, '_blank');
+            });
+
+            // Modals
+            document.getElementById('contact-btn').addEventListener('click', () => openModal('contact-modal'));
+            document.getElementById('donate-btn').addEventListener('click', () => {
+                openModal('donate-modal');
+                generateBtcQr();
+            });
+
+            document.querySelectorAll('[data-close]').forEach(btn => {
+                btn.addEventListener('click', () => closeModal(btn.dataset.close));
+            });
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) closeModal(modal.id);
+                });
+            });
+
+            // Forms
+            document.getElementById('contact-form').addEventListener('submit', onContactSubmit);
+            document.getElementById('report-form').addEventListener('submit', onReportSubmit);
+            document.getElementById('copy-btc').addEventListener('click', () => {
+                const addr = document.getElementById('btc-address-text').textContent;
+                navigator.clipboard.writeText(addr).then(() => toast('Bitcoin address copied'));
+            });
+
+            // Escape closes panel / modals
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closePanel();
+                    document.querySelectorAll('.modal.visible').forEach(m => closeModal(m.id));
+                }
+            });
+        }
+
+        function openModal(id) {
+            document.getElementById(id).classList.add('visible');
+        }
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('visible');
+        }
+
+        function onContactSubmit(e) {
             e.preventDefault();
-            reportFeedback.textContent = 'Sending...';
-            reportFeedback.style.color = 'blue';
+            const feedback = document.getElementById('contact-feedback');
+            feedback.textContent = 'Sending…';
+            feedback.style.color = 'var(--accent)';
+            emailjs.send('service_g8bddtz', 'template_qdkr30n', {
+                from_name: document.getElementById('contact-name').value,
+                from_email: document.getElementById('contact-email').value,
+                message: document.getElementById('contact-message').value,
+                subject: 'Contact from Benchmarks Map'
+            }).then(() => {
+                feedback.textContent = 'Message sent — thank you!';
+                feedback.style.color = 'var(--success)';
+                e.target.reset();
+                setTimeout(() => closeModal('contact-modal'), 1800);
+            }).catch(err => {
+                console.error(err);
+                feedback.textContent = 'Failed to send. Try again later.';
+                feedback.style.color = 'var(--danger)';
+            });
+        }
 
+        function onReportSubmit(e) {
+            e.preventDefault();
+            if (!currentBenchmark) return;
+            const feedback = document.getElementById('report-feedback');
+            feedback.textContent = 'Sending…';
+            feedback.style.color = 'var(--accent)';
             emailjs.send('service_g8bddtz', 'template_qdkr30n', {
                 from_name: document.getElementById('report-name').value || 'Anonymous',
                 from_email: document.getElementById('report-email').value || 'no-reply@example.com',
                 message: document.getElementById('report-message').value,
-                subject: `Report for Benchmark ID: ${currentBenchmark.id}` // Prefilled subject
-            })
-            .then(() => {
-                reportFeedback.textContent = 'Report sent successfully!';
-                reportFeedback.style.color = 'green';
-                reportForm.reset();
-                setTimeout(hideReportModal, 2000);
-            }, (error) => {
-                console.error('EmailJS error:', error);
-                reportFeedback.textContent = 'Failed to send. Try again later.';
-                reportFeedback.style.color = 'red';
+                subject: `Report for Benchmark ID: ${currentBenchmark.id}`
+            }).then(() => {
+                feedback.textContent = 'Report sent — thank you!';
+                feedback.style.color = 'var(--success)';
+                e.target.reset();
+                setTimeout(() => closeModal('report-modal'), 1800);
+            }).catch(err => {
+                console.error(err);
+                feedback.textContent = 'Failed to send. Try again later.';
+                feedback.style.color = 'var(--danger)';
             });
-        };
+        }
 
-        // Donate Modal Logic
-        const donateModal = document.getElementById('donate-modal');
-        const donateBtn = document.getElementById('donate-btn');
-        const donateCloseBtn = donateModal.querySelector('.close');
-
-        donateBtn.onclick = () => { 
-            donateModal.style.display = 'flex'; 
-            generateBtcQr(); // Generate QR on open
-        };
-        donateCloseBtn.onclick = () => { donateModal.style.display = 'none'; };
-        window.addEventListener('click', (event) => {
-            if (event.target === donateModal) { donateModal.style.display = 'none'; }
-        });
-
-        // Generate Bitcoin QR (optional; remove if using static image)
         function generateBtcQr() {
+            const container = document.getElementById('btc-qr');
+            container.innerHTML = '';
             const qr = new QRCodeStyling({
                 width: 150,
                 height: 150,
-                data: '3NHguEkzt1WSUV36LgTbVPwyYDEQbbHdax', // Your Kraken BTC address
-                image: '', // Optional logo
+                data: '3NHguEkzt1WSUV36LgTbVPwyYDEQbbHdax',
                 dotsOptions: { color: '#000' },
                 backgroundOptions: { color: '#fff' }
             });
-            const qrContainer = document.getElementById('btc-qr');
-            qrContainer.innerHTML = ''; // Clear previous
-            qr.append(qrContainer);
+            qr.append(container);
         }
 
-        // Load the map on page ready
-        window.onload = initMap;
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        // ---------- Boot ----------
+        initTheme();
+        window.addEventListener('load', initMap);
+    })();
     </script>
 </body>
 </html>
